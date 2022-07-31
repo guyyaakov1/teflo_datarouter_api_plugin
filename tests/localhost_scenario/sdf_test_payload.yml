@@ -19,13 +19,13 @@ execute:
     playbook:
     - name: ansible/playbook.yml
     artifacts:
-      - ~/plugin_demo
+      - ./../assets/plugin_demo
 
 report:
   - name: plugin_demo
     description: test report to Teflo datarouter plugin
     executes: exe1
     credential: datarouter-creds
-    dr_metadata: user_input.json
+    dr_metadata: user_config.json
     importer: datarouter
 

@@ -7,11 +7,6 @@ to import xunit files and logs to DataRouter by calling the DataRouter API.
 NOTE:
     This plugin is supported only on Python 3.9 and above.
 
-The teflo_datatouter_api_plugin does the following:
-
-1. Creates access token for the data router API.
-2. Send requests to datarouter api.
-
 Please refer Data Router Documentation to get more information.
 
 Install the importer plugin from source
