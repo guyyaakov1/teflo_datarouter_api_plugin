@@ -1,0 +1,31 @@
+---
+
+name: tpluginscenario
+description: Scenario to demonstration the teflo dr plugin.
+
+provision:
+  - name: localhost
+    groups: static-dummy
+    ip_address: 127.0.0.1
+    ansible_params:
+      ansible_connection: local
+
+execute:
+  - name: exe1
+    description: "execute playbook to create DR dir structer"
+    hosts: localhost
+    executor: runner
+    ignore_rc: True
+    playbook:
+    - name: ansible/playbook.yml
+    artifacts:
+      - ./../assets/plugin_demo
+
+report:
+  - name: plugin_demo
+    description: test report to Teflo datarouter plugin
+    executes: exe1
+    credential: datarouter-creds
+    dr_metadata: user_config.json
+    importer: datarouter
+

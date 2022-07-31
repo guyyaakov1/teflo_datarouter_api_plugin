@@ -1,0 +1,26 @@
+---
+# default rppreproc schema
+type: map
+allowempty: True
+mapping:
+  credential:
+    required: True
+    type: map
+    func: check_creds
+    mapping:
+      dr_client_id:
+        type: any
+        required: True
+      dr_client_secret:
+        type: any
+        required: True
+      auth_url:
+        type: any
+        required: True
+      host_url:
+        type: any
+        required: True
+  dr_metadata:
+    func: type_str_list
+    type: str
+    required: True
