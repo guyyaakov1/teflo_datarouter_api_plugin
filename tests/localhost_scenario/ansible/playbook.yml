@@ -1,0 +1,20 @@
+---
+- name: Playbook To Create Dir Structure.
+  hosts: localhost
+  tasks:
+    - name: create Main dir
+      file:
+       path: "~/plugin_demo"
+       state: directory
+    - name: create inner dirs
+      register: hello
+      file:
+        path: "~/plugin_demo/{{ item }}"
+        recurse: yes
+        state: directory
+      with_items: ["resultsdb", "results", "attachments"]
+
+    - debug: msg="{{hello.stdout}}"
+
+    - debug: msg="{{hello.stderr}}"
+
