@@ -8,10 +8,11 @@
     :license: GPLv3, see LICENSE for more details.
 """
 import tarfile
-import os
 from teflo.exceptions import TefloReportError
 import shutil
 import os
+import requests
+import json
 
 
 def compose_pload(payload_dir, results_artufact_path, workspace):
@@ -26,7 +27,7 @@ def compose_pload(payload_dir, results_artufact_path, workspace):
 
 
 def validate_compose_payload_content(tar_dir_list):
-    pay_structer = ['/resultsdb', '/results', '/attachments']
+    pay_structer = ['/resultsdb', '/results/', '/attachments']
     for dir in pay_structer:
         get_dir_list = list(filter(lambda x: dir in x, tar_dir_list))
         if not get_dir_list:
@@ -35,6 +36,8 @@ def validate_compose_payload_content(tar_dir_list):
 
 
 def validate_struc_before_compose(payload_dir):
+    """ Validating payload contain results/ dir and is not empty."""
+
     dir_contenct = []
     for dirname, dirnames, filenames in os.walk(payload_dir):
         for subdirname in dirnames:
@@ -42,8 +45,21 @@ def validate_struc_before_compose(payload_dir):
 
         for filename in filenames:
             dir_contenct.append(os.path.join(dirname, filename))
+    if '/results/' not in dir_contenct:
+        raise TefloReportError("Payload Dir structure is incorrect!")
+    else:
+        return True
 
-    if len(dir_contenct) <= 3:
-        raise TefloReportError("Payload Dir is empty!")
 
-    return True
+def send_get_req(dr_token_url, body):
+    res = requests.post(url=dr_token_url,
+                        data=body)
+    if res.status_code == 200:
+        return res
+    else:
+        raise TefloReportError(f'Generated access token Failed with status code {res.status_code}.')
+
+
+def get_token_sting(response):
+    json_ac = json.loads(response.content.decode('utf8'))
+    return json_ac['access_token']

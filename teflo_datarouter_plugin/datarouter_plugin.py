@@ -19,7 +19,7 @@
     datarouterapi_importer
 
     datarouter API importer module to connect to DataRouter API via Teflo. This class contains all the necessary
-    classes and functions to import logs to Datarouter instance.
+    classes and functions to import logs via datarouter service.
 
     :copyright: (c) 2022 Red Hat, Inc.
     :license: GPLv3, see LICENSE for more details.
@@ -32,7 +32,7 @@ import os
 import tarfile
 from teflo.exceptions import TefloReportError, TefloError
 import re
-from .helpers import validate_compose_payload_content, compose_pload
+from .helpers import validate_compose_payload_content, compose_pload, send_get_req, get_token_sting
 
 
 class DataRouterPlugin(ImporterPlugin):
@@ -51,26 +51,27 @@ class DataRouterPlugin(ImporterPlugin):
     def import_artifacts(self):
         """this method sends the data to the datarouter api and send results back to user.
         """
-        payload_dir = os.path.join(self.config['WORKSPACE'],
+        payload_dir = os.path.join(self.data_folder,
                                    self.report_name)
         jconfig_dir = self.config['WORKSPACE']
         tar_payload = self.get_payload_dir(payload_dir)
         json_config_file = self.get_json_config_file(jconfig_dir)
+        dr_token_url = self.provider_credentials['auth_url']
+        dr_url = self.provider_credentials['host_url'] + '/api/results'
 
         # Get access Token
-        ac_token = self.get_oauth_token()
+        ac_token = self.get_oauth_token(dr_token_url)
 
         # SEND PUT REQ AND RETURN TRACK ID
-        results["request_uuid"] = self.send_put_req(ac_token, tar_payload, json_config_file)
+        results["request_uuid"] = self.send_put_req(dr_url, ac_token, tar_payload, json_config_file)
 
         return results
 
-    def get_oauth_token(self):
+    def get_oauth_token(self, dr_token_url):
         """GET TOKEN TO AUTH USER
         """
         dr_client_id = self.provider_credentials['dr_client_id']
         dr_client_secret = self.provider_credentials['dr_client_secret']
-        dr_token_url = self.provider_credentials['auth_url']
 
         body = {
                 'grant_type': 'client_credentials',
@@ -79,20 +80,15 @@ class DataRouterPlugin(ImporterPlugin):
                 'scope': 'openid',
             }
         try:
-            res = requests.post(url=dr_token_url,
-                                data=body)
-            if res.status_code == 200:
-                json_ac = json.loads(res.content.decode('utf8'))
-                self.logger.debug('Successfully Generated access token from DR API.')
-                return json_ac['access_token']
-            else:
-                raise TefloReportError(f'Generated access token Failed with status code {res.status_code}.')
+            dr_token_req = send_get_req(dr_token_url=dr_token_url, body=body)
+            dr_token_srt = get_token_sting(response=dr_token_req)
+            self.logger.debug('Successfully Generated access token from DR API.')
+            return dr_token_srt
         except Exception as ex:
             raise TefloError(f'Failed Sending POST req with error: {ex}')
 
-    def send_put_req(self, access_token, tar_payload, json_config_file):
+    def send_put_req(self, dr_url, access_token, tar_payload, json_config_file):
         """COLLECT DATA AND SEND PUT REQ TO SERVER"""
-        dr_url = self.provider_credentials['host_url'] + '/api/results'
         headers = {'Authorization': f'Bearer {access_token}',
                    'X-DataRouter-Auth': 'openid-connect-client-credentials-grant',
                    }
@@ -112,7 +108,7 @@ class DataRouterPlugin(ImporterPlugin):
             else:
                 raise TefloReportError(f'PUT req has Failed with err  {res.content}.')
         except Exception as ex:
-            raise TefloError(f'Failed Sending PUT req with error: {ex}')
+            raise TefloReportError(f'Failed Sending PUT req with error: {ex}')
 
     def get_payload_dir(self, payload_dir):
         """Get provided datarouter payload and check if need to compose to '.tar.gz'.
