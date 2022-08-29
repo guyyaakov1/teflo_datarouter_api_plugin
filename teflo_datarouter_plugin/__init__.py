@@ -24,5 +24,5 @@
 
 from .datarouter_plugin import DataRouterPlugin
 
-__version__ = '0.0.0'
+__version__ = '1.0.0'
 __author__ = 'Red Hat Inc.'
