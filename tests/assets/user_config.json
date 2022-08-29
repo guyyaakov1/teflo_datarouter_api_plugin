@@ -1,0 +1,57 @@
+{
+    "targets": {
+
+        "reportportal": {
+            "config": {
+                 "hostname": "test.com",
+                 "project": "DR_TEST_PROJECT"
+
+            },
+            "processing": {
+
+                "merge_launches": true,
+                "simple_xml": false,
+                "auto_dashboard": true,
+                "launch_with_class_name": false,
+                "property_filter": [".*"],
+                "debug": true,
+                "launch": {
+                    "name": "teflo_dr_launch",
+                    "description": "This is an example launch for dr",
+                    "attributes": [
+                                    {
+                                      "value": "example_conf_tag1"
+                                    },
+                                    {
+                                      "value": "example_conf_tag2"
+                                    },
+                                    {
+                                      "value": "example_conf_tag3"
+                                    }
+                                  ]
+
+
+                }
+            }
+        },
+
+        "polarion": {
+          "disabled": true,
+            "config": {
+                 "project": "Carbon1"
+            },
+            "processing": {
+                "testsuite_properties": {
+                     "polarion-lookup-method": "name",
+                     "polarion-testrun-title": "demo2_ruj_polar_tests"
+                 },
+                "testcase_properties": {
+
+                }
+            }
+        },
+        "resultsdb": {
+          "disabled": true
+		}
+        }
+    }

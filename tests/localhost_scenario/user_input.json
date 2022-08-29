@@ -3,8 +3,8 @@
 
         "reportportal": {
             "config": {
-                 "hostname": "tests.com",
-                 "project": "TEST_PROJECT"
+                 "hostname": "test.com",
+                 "project": "DR_TEST_PROJECT"
 
             },
             "processing": {
@@ -16,7 +16,7 @@
                 "property_filter": [".*"],
                 "debug": true,
                 "launch": {
-                    "name": "demo2_launch",
+                    "name": "teflo_dr_launch",
                     "description": "This is an example launch for dr",
                     "attributes": [
                                     {
@@ -36,14 +36,14 @@
         },
 
         "polarion": {
-          "disabled": false,
+          "disabled": true,
             "config": {
-                 "project": "Tests1"
+                 "project": "Carbon1"
             },
             "processing": {
                 "testsuite_properties": {
                      "polarion-lookup-method": "name",
-                     "polarion-testrun-title": "demo2_ruj_polar_tests"
+                     "polarion-testrun-title": "demo2_polar_tests"
                  },
                 "testcase_properties": {
 
@@ -51,7 +51,8 @@
             }
         },
         "resultsdb": {
-          "disabled": false
+          "disabled": true
+		}
         }
     }
-}
+

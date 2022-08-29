@@ -3,24 +3,19 @@
 ### Install
 To install the plugin you can use pip. 
 ```bash
-$ pip install teflo_datarouter_plugin@git+https://github.com/RedHatQE/teflo_datarouter_api_plugin.git@<tagged_branch>
+ pip install teflo_datarouter_plugin@git+https://github.com/RedHatQE/teflo_datarouter_api_plugin.git@<tagged_branch>
 ```
 
-## Credentials
-To report resources with datarouter API requires credentials. You can utilize them from teflo.cfg.
+## scenario descriptor
+
+To report resources with datarouter API, we need to define some keys in the scenario descriptor.
 
 
-* The name section of report block should contain te name of the ".tar.gz" payload to send.
-If the user point to a dir Teflo plugin will try to compose and send to API.
-Learn more about payload structure on Confluence page.
-* Provide Teflo the credentials in the `teflo.cfg` and reference that particular 
-section using Teflo's `credential` parameter.
- 
   ```yaml
   #Example teflo scenario referencing the credential in the teflo.cfg
   
    report:
-    - name: test.tar.gz
+    - name: example.tar.gz
       description: test report to Teflo datarouter plugin
       executes: testexe
       credential: datarouter-creds
@@ -28,22 +23,41 @@ section using Teflo's `credential` parameter.
       importer: datarouter
 
   ```    
-### Configuring Credentials
-Below are the provider specific options that can be specified in the `teflo.cfg` 
+
 
 |key| Description | Required|
 |  ---  |   ----  | ---  |
-|dr_client_id|The DataRouter client id with permissions.| True|
-|dr_client_secret|The DataRouter client secret.| True|
-|auth_url|URL to Get Access token .| True|
-|host_url|URL to handle user DataRouter API requests.| True|
+|name|The Name of DataRouter payload to send. This is used as a regex string by Teflo to find payload within the the current workspace or the results directory.| True|
 
+|executes|Point to which executes block collect logs from.| False|
+|credential|DataRouter auth credentials.(referring to teflo.cfg)| True|
+|dr_metadata|DataRouter json file that contain configuration.| True|
+|importer|Which importer to use.| False|
+
+
+  * If using the execute block to collect artifacts/payload to be sent via the teflo_datarouter_api_plugin, the artifacts/payload will be searched in the artifacts director under Teflo's results directory or if artifact_locations is used, then the payload will be searched in the locations mentioned there.
+  * More information about where the artifacts can be stored can be found [Here](https://teflo.readthedocs.io/en/latest/users/definitions/report.html#finding-the-right-artifacts).
+
+## Credentials
+To report resources with datarouter API requires credentials. You can initialize them from teflo.cfg.
+
+Below are the importer specific options that can be specified in the `teflo.cfg` 
 
 ```ini
 # Example credentials in teflo.cfg
 [credentials:datarouter-creds]
-dr_client_id=dummy
-dr_client_secret=ChangeMe123
-auth_url=
-host_url=
+DR_CLIENT_ID=dummy
+DR_CLIENT_SECRET=ChangeMe123
+AUTH_URL=
+HOST_URL=
   ```
+
+|key| Description | Required|
+|  ---  |   ----  | ---  |
+|DR_CLIENT_ID|The DataRouter client id with permissions.| True|
+|DR_CLIENT_SECRET|The DataRouter client secret.| True|
+|AUTH_URL|URL used for acquiring temporary auth token.| True|
+|HOST_URL|URL for Data router service.| True|
+
+> **Note**  
+>  > **Please reach out to Teflo team to get more information on the auth_url.**
