@@ -28,7 +28,6 @@ To report resources with datarouter API, we need to define some keys in the scen
 |key| Description | Required|
 |  ---  |   ----  | ---  |
 |name|The Name of DataRouter payload to send. This is used as a regex string by Teflo to find payload within the the current workspace or the results directory.| True|
-
 |executes|Point to which executes block collect logs from.| False|
 |credential|DataRouter auth credentials.(referring to teflo.cfg)| True|
 |dr_metadata|DataRouter json file that contain configuration.| True|
@@ -36,6 +35,7 @@ To report resources with datarouter API, we need to define some keys in the scen
 
 
   * If using the execute block to collect artifacts/payload to be sent via the teflo_datarouter_api_plugin, the artifacts/payload will be searched in the artifacts director under Teflo's results directory or if artifact_locations is used, then the payload will be searched in the locations mentioned there.
+  * DataRouter Plugin output files can be found under .data_folder/.results/datarouter
   * More information about where the artifacts can be stored can be found [Here](https://teflo.readthedocs.io/en/latest/users/definitions/report.html#finding-the-right-artifacts).
 
 ## Credentials
