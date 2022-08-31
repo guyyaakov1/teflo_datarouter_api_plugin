@@ -102,5 +102,3 @@ def send_post_req(dr_token_url, body):
         return data
     else:
         raise TefloReportError(f'Generated access token Failed with status code {res["status_code"]}.')
-
-
