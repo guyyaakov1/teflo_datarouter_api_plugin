@@ -33,6 +33,9 @@ jobs:
       - name: install required packages
         run: |
           yum install -y gcc python3 python3-devel python3-pip krb5-workstation krb5-devel git
+      # update pip package to prevent errors
+      - name: update pip package
+        run: pip3 install --upgrade pip
       - name: install pip virtualenv tox and teflo
         env:
           LANG: en_US.utf8
