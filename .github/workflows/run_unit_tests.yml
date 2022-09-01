@@ -33,7 +33,7 @@ jobs:
       - name: install required packages
         run: |
           yum install -y gcc python3 python3-devel python3-pip krb5-workstation krb5-devel git
-      - name: install pip virtualenv tox and teflo
+      - name: install pip virtualenv tox and teflo  
         run: pip3 install virtualenv tox teflo
 
       # Runs a set of commands using the runners shell
