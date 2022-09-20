@@ -53,7 +53,6 @@ def artifact_locations():
 
 
 @pytest.fixture(scope='class')
-
 def execute(artifact_locations):
     return Execute(
         name='dr_execute',
@@ -117,7 +116,7 @@ def report_no_art(default_params_no_art, config):
 def datarouter_api_plugin(report):
 
     dr_api_plugin = DataRouterPlugin(report)
-    dr_api_plugin.workspace = './../assets'
+    dr_api_plugin.workspace = '/tmp'
     dr_api_plugin.datafolder = '/tmp'
     return dr_api_plugin
 
@@ -152,16 +151,17 @@ class TestDRPlugin(object):
             datarouter_api_plugin_no_art.get_tar_payload_dir('./../assets/test')
 
     @staticmethod
-    def test_validate_dr_json(datarouter_api_plugin):
+    def test_validate_dr_json_path_exist_1(datarouter_api_plugin):
         """ This test verifies a given json file exists """
-        assert datarouter_api_plugin.get_json_config_file() == './../assets/user_config.json'
+        os.system('touch /tmp/user_config.json')
+        assert datarouter_api_plugin._validate_dr_json_path_exist('user_config.json') == '/tmp/user_config.json'
+        os.system('rm /tmp/user_config.json')
 
     @staticmethod
-    def test_validate_dr_json_path_not_exist_2(datarouter_api_plugin):
+    def test_validate_dr_json_path_exist_2(datarouter_api_plugin):
         """ This test verifies an error is raised when json file does not exist """
-        datarouter_api_plugin.provider_params.update({'dr_metadata': 'asd.json'})
-        with pytest.raises(TefloReportError,  match='json_config_file path Not found'):
-            datarouter_api_plugin.get_json_config_file()
+        with pytest.raises(TefloReportError,  match='Data Router Config json file not found'):
+            datarouter_api_plugin._validate_dr_json_path_exist('asd.json')
 
     @staticmethod
     def test_validate_method_with_correct_schema(datarouter_api_plugin):
@@ -195,5 +195,6 @@ class TestDRPlugin(object):
         mock_method.return_value = op0
         results = datarouter_api_plugin.send_put_req(access_token="testacceesstoke.com",
                                                      tar_payload={"path": "../assets/plugin_test.tar.gz"},
-                                                     json_config_file="../assets/user_config.json", dr_url='https://test.url.com')
+                                                     json_config_file="../assets/user_config.json",
+                                                     dr_url='https://test.url.com')
         assert results == '00000000-0000-0000-0000-000000000000'

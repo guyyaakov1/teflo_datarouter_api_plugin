@@ -30,7 +30,7 @@ To report resources with datarouter API, we need to define some keys in the scen
 |name|The Name of DataRouter payload to send. This is used as a regex string by Teflo to find payload within the the current workspace or the results directory.| True|
 |executes|Point to which executes block collect logs from.| False|
 |credential|DataRouter auth credentials.(referring to teflo.cfg)| True|
-|dr_metadata|DataRouter json file that contain configuration.| True|
+|dr_metadata|DataRouter json file that contain configuration.(a path relative to workspace)| True|
 |importer|Which importer to use.| False|
 
 
