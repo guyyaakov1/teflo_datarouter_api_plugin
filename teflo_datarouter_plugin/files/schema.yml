@@ -1,5 +1,5 @@
 ---
-# default rppreproc schema
+# default datarouter schema
 type: map
 allowempty: True
 mapping:

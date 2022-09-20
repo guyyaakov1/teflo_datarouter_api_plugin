@@ -128,7 +128,7 @@ class DataRouterPlugin(ImporterPlugin):
                 ], verify=False)
             if res.status_code == 200:
                 data = res.json()
-                self.logger.info('Data send successfully ro DR API.')
+                self.logger.info('Data send successfully to DR API.')
                 j_res = data['msg']
                 self.logger.info(f'{j_res}')
                 get_regex = self.get_result_uuid_regex(j_res)
@@ -157,13 +157,25 @@ class DataRouterPlugin(ImporterPlugin):
     def get_json_config_file(self):
         """Get provided datarouter json config.
         """
-        validate_path = os.path.join(self.workspace,
-                                     self.provider_params.get('dr_metadata'))
-        if os.path.isfile(validate_path):
-            json_config_file = validate_path
-            return json_config_file
+
+        if self.provider_params.get('dr_metadata'):
+            dr_config_file = self._validate_dr_json_path_exist(self.provider_params.get('dr_metadata'))
+            return dr_config_file
         else:
-            raise TefloReportError("json_config_file path Not found.")
+            raise TefloReportError("dr_metadata parameter is not set in the SDF ")
+
+    def _validate_dr_json_path_exist(self, json_path):
+        """
+        This method validates if the given json path is correct and the json file exist in the workspace
+        :param json_path:
+        :return: json file path joined with the workspace
+        :rtype: str
+        """
+        if os.path.isfile(os.path.join(self.workspace, json_path)):
+            return os.path.join(self.workspace, json_path)
+        else:
+            self.logger.error("Data Router Config json file not found")
+            raise TefloReportError("Data Router Config json file not found")
 
     def get_dr_results_dir(self):
         # creating a folder under .results dir which will collect all the DR Plugin data created by Teflo.
