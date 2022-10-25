@@ -51,6 +51,8 @@ DR_CLIENT_SECRET=ChangeMe123
 AUTH_URL=
 HOST_URL=
   ```
+> **Note**  
+>  > **When using host_url and auth_url with https protocol, user would need to install/export proper public RH certificates**
 
 |key| Description | Required|
 |  ---  |   ----  | ---  |
