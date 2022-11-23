@@ -7,23 +7,15 @@
     :copyright: (c) 2022 Red Hat, Inc.
     :license: GPLv3, see LICENSE for more details.
 """
+import time
 import tarfile
-from teflo.exceptions import TefloReportError
-import shutil
+from teflo.exceptions import TefloReportError, TefloError
+from logging import getLogger
 import os
 import requests
 import json
 
-
-def compose_pload(payload_dir, results_artufact_path, workspace):
-    tar_dir_list = []
-    check_dir = validate_struc_before_compose(payload_dir)
-    with tarfile.open(payload_dir + ".tar.gz", "w:gz") as ntar:
-        ntar.add(payload_dir, arcname=os.path.basename(payload_dir))
-        for member in ntar.getmembers():
-            tar_dir_list.append(member.name)
-        shutil.copy2(f'{payload_dir}.tar.gz', f'{workspace}/{results_artufact_path}/')
-        return tar_dir_list
+LOG = getLogger(__name__)
 
 
 def validate_compose_payload_content(tar_dir_list):
@@ -35,34 +27,21 @@ def validate_compose_payload_content(tar_dir_list):
     return "Validate payload successfully."
 
 
-def validate_struc_before_compose(payload_dir):
-    """ Validating payload contain results/ dir and is not empty."""
-
-    dir_contenct = []
-    for dirname, dirnames, filenames in os.walk(payload_dir):
-        for subdirname in dirnames:
-            dir_contenct.append(os.path.join(dirname, subdirname))
-
-        for filename in filenames:
-            dir_contenct.append(os.path.join(dirname, filename))
-    if '/results/' not in dir_contenct:
-        raise TefloReportError("Payload Dir structure is incorrect!")
-    else:
-        return True
-
-
-def send_get_req(dr_token_url, body):
-    res = requests.post(url=dr_token_url,
-                        data=body)
-    if res.status_code == 200:
-        return res
-    else:
-        raise TefloReportError(f'Generated access token Failed with status code {res.status_code}.')
-
-
-def get_token_sting(response):
-    json_ac = json.loads(response.content.decode('utf8'))
-    return json_ac['access_token']
+def get_oauth_token(dr_token_url, dr_client_id, dr_client_secret):
+    """GET TOKEN TO AUTH USER
+    """
+    body = {
+            'grant_type': 'client_credentials',
+            'client_id': dr_client_id,
+            'client_secret': dr_client_secret,
+            'scope': 'openid',
+        }
+    try:
+        dr_token_req = send_post_req(dr_token_url=dr_token_url, body=body)
+        LOG.debug('Successfully Generated access token from DR API.')
+        return dr_token_req['access_token']
+    except Exception as ex:
+        raise TefloError(f'Generating access token from DR API Failed with error: {ex}')
 
 
 def compose_pload(payload_dir, tar_dest):
@@ -101,4 +80,63 @@ def send_post_req(dr_token_url, body):
         data = res.json()
         return data
     else:
-        raise TefloReportError(f'Generated access token Failed with status code {res["status_code"]}.')
+        raise TefloReportError(f'Generated access token Failed with status code {res.status_code}.')
+
+
+def get_req_status(get_url, ac_token, dr_client_id, dr_client_secret, dr_token_url, req_count=0):
+    """Get Status of req. In case of 'PENDING' wait 5 min."""
+
+    headers = {'Authorization': f'Bearer {ac_token}',
+               'X-DataRouter-Auth': 'openid-connect-client-credentials-grant',
+               }
+    res = requests.get(url=get_url,
+                       headers=headers, verify=False)
+    if res.status_code == 401:
+        res = handle_token_retry(req_count, dr_token_url, dr_client_id, dr_client_secret, get_url)
+
+    if res.status_code == 200:
+        json_content = json.loads(res.content.decode('utf8'))
+        if json_content.get('status') == 'PENDING':
+            while (json_content.get('status') != 'OK') and (json_content.get('status') != 'FAILURE')\
+                    and (req_count <= 10):
+                LOG.debug(f"Req status is {json_content['status']}. checking again in 30 sec. attempt -"
+                          f" {req_count + 1}/10")
+                time.sleep(30)
+                res = requests.get(url=get_url,
+                                   headers=headers, verify=False)
+                json_content = json.loads(res.content.decode('utf8'))
+                req_count = req_count + 1
+
+                if res.status_code == 401:
+                    res = handle_token_retry(req_count, dr_token_url, dr_client_id, dr_client_secret, get_url)
+                    json_content = json.loads(res.content.decode('utf8'))
+
+        if json_content["status"] == 'OK':
+            LOG.info("Data sent successfully. For more info use log-level debug")
+            LOG.debug(f'Req ID: {json_content["request_id"]} Status: {json_content["status"]}')
+            # GET TARGET RESULTS
+            for k, v in json_content['targets'].items():
+                LOG.debug(f'Target Name: {k} Status: {v["status"]}')
+            return json_content
+        elif json_content["status"] == 'FAILURE':
+            raise TefloReportError(f'req with id {json_content["request_id"]} failed')
+            # return json_content
+        elif json_content["status"] == 'PENDING':
+            raise TefloReportError(f'Teflo DR plugin failed getting status of req with id: {json_content["request_id"]}'
+                                   f' ,max wait to response is 5min. Please visit host url get status.')
+        else:
+            raise TefloReportError(f'Get request status Failed with status {json_content["status"]}.')
+    else:
+        raise TefloReportError(f'Get request status Failed with status code {res.status_code}.')
+
+
+def handle_token_retry(req_count, dr_token_url, dr_client_id, dr_client_secret, get_url):
+    LOG.info(f'Unauthorized: Signature has expired, Creating new token and trying again. attempt -'
+             f' {req_count + 1}/10.')
+    gen_ntoken = get_oauth_token(dr_token_url, dr_client_id, dr_client_secret)
+    headers = {'Authorization': f'Bearer {gen_ntoken}',
+               'X-DataRouter-Auth': 'openid-connect-client-credentials-grant',
+               }
+    res = requests.get(url=get_url,
+                       headers=headers, verify=False)
+    return res

@@ -63,3 +63,19 @@ HOST_URL=
 
 > **Note**  
 >  > **Please reach out to Teflo team to get more information on the auth_url.**
+
+
+## Request Status
+
+When payload is sent to DR API, Teflo DR Plugin will wait 5min for response with status "OK/FAILURE".
+All results can be found in results.yml
+
+```yaml
+# Example of output in results.yml
+    request_results:
+      request_id: 0000-0000-0000-0000-00000000
+      status: OK
+      targets:
+        reportportal:
+          status: OK
+  ```

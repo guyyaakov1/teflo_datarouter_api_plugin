@@ -25,12 +25,11 @@
     :license: GPLv3, see LICENSE for more details.
 """
 
-
 import requests
 from teflo.core import ImporterPlugin
 from teflo.helpers import schema_validator
 from teflo.exceptions import TefloReportError, TefloError
-from .helpers import compose_pload, send_post_req
+from .helpers import compose_pload, send_post_req, get_req_status, get_oauth_token
 import os
 import re
 import json
@@ -46,6 +45,15 @@ class DataRouterPlugin(ImporterPlugin):
 
     def __init__(self, report):
         super(DataRouterPlugin, self).__init__(report)
+        if self.provider_credentials['auth_url'] and self.provider_credentials['host_url']\
+                and self.provider_credentials['dr_client_secret'] and self.provider_credentials['dr_client_id']:
+            self.dr_url = self.provider_credentials['host_url'] + '/api/results'
+            self.dr_token_url = self.provider_credentials['auth_url']
+            self.dr_client_secret = self.provider_credentials['dr_client_secret']
+            self.dr_client_id = self.provider_credentials['dr_client_id']
+            self.req_url = self.provider_credentials['host_url'] + '/api/requests/'
+        else:
+            raise TefloReportError("DataRouter Credentials are not set in teflo.cfg")
         # creating logger for this plugin to get added to teflo's loggers
         self.create_logger(name='teflo_datarouter_plugin', data_folder=self.data_folder)
 
@@ -53,32 +61,29 @@ class DataRouterPlugin(ImporterPlugin):
         """this method sends the data to the datarouter api and send results back to user.
         """
 
-        if self.provider_credentials['auth_url'] and self.provider_credentials['host_url']\
-                and self.provider_credentials['dr_client_secret'] and self.provider_credentials['dr_client_id']:
-            dr_url = self.provider_credentials['host_url'] + '/api/results'
-            dr_token_url = self.provider_credentials['auth_url']
-        else:
-            raise TefloReportError("DataRouter Credentials are not set in teflo.cfg")
-
         payload_dir = self.get_artifacts()
-
         tar_payload = self.get_tar_payload_dir(payload_dir)
         json_config_file = self.get_json_config_file()
+        results = {}
 
-        # Get access Token
-        ac_token = self.get_oauth_token(dr_token_url)
+        # GET ACCESS TOKEN
+        ac_token = get_oauth_token(self.dr_token_url, self.dr_client_id,
+                                   self.dr_client_secret)
 
         # SEND PUT REQ AND RETURN TRACK ID
 
-        results = {"request_uuid": self.send_put_req(ac_token, dr_url, tar_payload, json_config_file)}
-        json_token = json.dumps(results, indent=4)
-        json_fname = f"{results['request_uuid']}.json"
-        # Create json with token on .results dir.
+        send_put_req = self.send_put_req(ac_token, tar_payload, json_config_file)
+        json_token = json.dumps(send_put_req, indent=4)
+        json_fname = f"{send_put_req}.json"
+        # create a json file with the token in it under '.results' directory.
         dr_results_dir = self.get_dr_results_dir()
         targ_dest = os.path.join(dr_results_dir, json_fname)
         with open(targ_dest, "w") as json_out:
             json_out.write(json_token)
-
+        # GET REQ STATUS
+        get_url = self.req_url + send_put_req
+        get_response = get_req_status(get_url, ac_token, self.dr_client_id, self.dr_client_secret, self.dr_token_url)
+        results['request_results'] = get_response
         return results
 
     def get_artifacts(self):
@@ -94,26 +99,7 @@ class DataRouterPlugin(ImporterPlugin):
                                        get_report_name)
         return payload_dir
 
-    def get_oauth_token(self, dr_token_url):
-        """GET TOKEN TO AUTH USER
-        """
-        dr_client_id = self.provider_credentials['dr_client_id']
-        dr_client_secret = self.provider_credentials['dr_client_secret']
-
-        body = {
-                'grant_type': 'client_credentials',
-                'client_id': dr_client_id,
-                'client_secret': dr_client_secret,
-                'scope': 'openid',
-            }
-        try:
-            dr_token_req = send_post_req(dr_token_url=dr_token_url, body=body)
-            self.logger.debug('Successfully Generated access token from DR API.')
-            return dr_token_req['access_token']
-        except Exception as ex:
-            raise TefloError(f'Generating access token from DR API Failed with error: {ex}')
-
-    def send_put_req(self, access_token, dr_url, tar_payload, json_config_file):
+    def send_put_req(self, access_token, tar_payload, json_config_file):
         """COLLECT DATA AND SEND PUT REQ TO SERVER"""
 
         headers = {'Authorization': f'Bearer {access_token}',
@@ -122,13 +108,13 @@ class DataRouterPlugin(ImporterPlugin):
         try:
             compose_payload = open(tar_payload['path'], 'rb')
             compose_config = open(json_config_file, 'rb')
-            res = requests.put(url=dr_url,  headers=headers, files=[
+            res = requests.put(url=self.dr_url,  headers=headers, files=[
                     ("metadata", compose_config),
                     ("payload", compose_payload)
                 ], verify=False)
-            if res.status_code == 200:
+            if res.status_code == 201:
                 data = res.json()
-                self.logger.info('Data send successfully to DR API.')
+                self.logger.info('Data sent successfully to DR API.')
                 j_res = data['msg']
                 self.logger.info(f'{j_res}')
                 get_regex = self.get_result_uuid_regex(j_res)
@@ -178,7 +164,7 @@ class DataRouterPlugin(ImporterPlugin):
             raise TefloReportError("Data Router Config json file not found")
 
     def get_dr_results_dir(self):
-        # creating a folder under .results dir which will collect all the DR Plugin data created by Teflo.
+        # CREATING A FOLDER UNDER .results DIR WHICH WILL COLLECT ALL THE  DR Plugin DATA CREATED BY TEFLO.
         dr_payload_dir = os.path.join(self.config['RESULTS_FOLDER'], 'datarouter')
         if not os.path.isdir(dr_payload_dir):
             os.system('mkdir %s' % os.path.abspath(dr_payload_dir))

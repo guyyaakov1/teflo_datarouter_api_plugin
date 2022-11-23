@@ -35,6 +35,8 @@ import mock
 import json
 import os
 
+from teflo_datarouter_plugin.helpers import get_oauth_token, get_req_status
+
 
 @pytest.fixture(scope='class')
 def config():
@@ -176,11 +178,11 @@ class TestDRPlugin(object):
                 "status_code": 200,
                 "content": 'This is A test',
             }
-        mock_method.return_value = json.dumps(op0)
+        mock_method.return_value = op0
         datarouter_api_plugin.provider_credentials = dict(dr_client_id='test',
                                                           host_url='https://test.url.com',)
-        with pytest.raises(KeyError,  match='dr_client_secret'):
-            datarouter_api_plugin.get_oauth_token(dr_token_url='https://test.url.com/token')
+        with pytest.raises(TypeError,  match='dr_client_secret'):
+            get_oauth_token(dr_token_url='https://test.url.com/token', dr_client_id='test')
 
     @staticmethod
     @mock.patch('teflo_datarouter_plugin.datarouter_plugin.requests.put')
@@ -188,13 +190,60 @@ class TestDRPlugin(object):
         """Test for PAYLOAD PUT req. GET TOKEN FOR TRACKING"""
 
         op0 = Response()
-        op0.status_code = 200
+        op0.status_code = 201
         op0._content = b'{"msg": "This is a test string 00000000-0000-0000-0000-000000000000"}'
 
         datarouter_api_plugin.provider_credentials = dict(host_url='https://test.url.com')
         mock_method.return_value = op0
         results = datarouter_api_plugin.send_put_req(access_token="testacceesstoke.com",
                                                      tar_payload={"path": "../assets/plugin_test.tar.gz"},
-                                                     json_config_file="../assets/user_config.json",
-                                                     dr_url='https://test.url.com')
+                                                     json_config_file="../assets/user_config.json")
         assert results == '00000000-0000-0000-0000-000000000000'
+
+    @staticmethod
+    @mock.patch('teflo_datarouter_plugin.helpers.requests.get')
+    def test_track_req_ok(mock_method, datarouter_api_plugin):
+        """Test for PAYLOAD PUT req. GET TOKEN FOR TRACKING"""
+
+        op0 = Response()
+        op0.status_code = 200
+        op0._content = b'{"status": "OK", "request_id": "00000000-0000-0000-0000-000000000000", "targets": {"test1":' \
+                       b' {"status": "OK"}, "test2": {"status": "OK"}}}'
+
+        datarouter_api_plugin.provider_credentials = dict(host_url='https://test.url.com')
+        mock_method.return_value = op0
+        results = get_req_status(dr_client_id='test', dr_client_secret='secret', dr_token_url='https://api.test/token',
+                                 get_url='https://api.test/123-123-123', ac_token='token')
+        assert results['status'] == 'OK'
+
+    @staticmethod
+    @mock.patch('teflo_datarouter_plugin.helpers.requests.get')
+    def test_track_req_pending(mock_method, datarouter_api_plugin):
+        """Test for PAYLOAD PUT req. GET TOKEN FOR TRACKING"""
+
+        op0 = Response()
+        op0.status_code = 200
+        op0._content = b'{"status": "PENDING", "request_id": "00000000-0000-0000-0000-000000000000", "targets":' \
+                       b' {"test1": {"status": "OK"}, "test2": {"status": "OK"}}}'
+
+        datarouter_api_plugin.provider_credentials = dict(host_url='https://test.url.com')
+        mock_method.return_value = op0
+        with pytest.raises(TefloReportError,  match='max wait to response is 5min'):
+            get_req_status(dr_client_id='test', dr_client_secret='secret', dr_token_url='https://api.test/token',
+                           get_url='https://api.test/123-123-123', ac_token='token', req_count=9)
+
+    @staticmethod
+    @mock.patch('teflo_datarouter_plugin.helpers.requests.get')
+    def test_track_req_failure(mock_method, datarouter_api_plugin):
+        """Test for PAYLOAD PUT req. GET TOKEN FOR TRACKING"""
+
+        op0 = Response()
+        op0.status_code = 200
+        op0._content = b'{"status": "FAILURE", "request_id": "00000000-0000-0000-0000-000000000000", "targets":' \
+                       b' {"test1": {"status": "OK"}, "test2": {"status": "OK"}}}'
+
+        datarouter_api_plugin.provider_credentials = dict(host_url='https://test.url.com')
+        mock_method.return_value = op0
+        with pytest.raises(TefloReportError,  match='req with id 00000000-0000-0000-0000-000000000000 failed'):
+            get_req_status(dr_client_id='test', dr_client_secret='secret', dr_token_url='https://api.test/token',
+                           get_url='https://api.test/123-123-123', ac_token='token')
